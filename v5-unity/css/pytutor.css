@@ -1238,3 +1238,388 @@ div.ExecutionVisualizer .ui-slider .ui-slider-range {
 }
 
 /* END modernized visual theme */
+
+
+/* ==========================================================================
+   DARK / LIGHT MODE
+
+   Toggled via body.pt-dark. Since every classic-view rule above already
+   reads its colors from the --pt-* custom properties on
+   div.ExecutionVisualizer, retinting those variables here is enough to
+   re-theme the whole classic view -- no need to touch its rules again.
+   The Structure View below reuses the same variable set (it lives inside
+   div.ExecutionVisualizer too) plus a few of its own for shape-specific
+   fills, overridden the same way.
+   ========================================================================== */
+
+body.pt-dark {
+  background: #0f1b2d;
+  color: #e7ecf5;
+}
+
+body.pt-dark .eyebrow,
+body.pt-dark .dashboard-title,
+body.pt-dark #codeInputWarnings,
+body.pt-dark label {
+  color: #e7ecf5;
+}
+
+body.pt-dark div.ExecutionVisualizer {
+  --pt-accent: #7c93ff;
+  --pt-accent-dark: #5f78e0;
+  --pt-accent-soft: #24304a;
+  --pt-flash-bg: #6b5a1e;
+  --pt-flash-bg-strong: #caa23a;
+  --pt-bg-card: #16243a;
+  --pt-bg-page: #0f1b2d;
+  --pt-border: #33455f;
+  --pt-border-soft: #22314a;
+  --pt-text: #e7ecf5;
+  --pt-text-muted: #93a5c2;
+
+  --sv-list-val-bg: #1c3350;
+  --sv-list-ptr-bg: #16243a;
+  --sv-tree-bg: #1f3a2e;
+  --sv-tree-null-bg: #16243a;
+  --sv-graph-bg: #1c3350;
+  --sv-graph-visited-bg: #2f5233;
+  --sv-array-bg: #3a3320;
+  --sv-bucket-key-bg: #3a3320;
+  --sv-bucket-val-bg: #16243a;
+
+  background: var(--pt-bg-page);
+  color: var(--pt-text);
+}
+
+body.pt-dark div.ExecutionVisualizer table#pyCodeOutput {
+  background: var(--pt-bg-card);
+  color: var(--pt-text);
+}
+
+body.pt-dark div.ExecutionVisualizer table#pyCodeOutput .lineNo {
+  color: var(--pt-text-muted);
+}
+
+
+/* ==========================================================================
+   STRUCTURE VIEW
+
+   A second, teaching-style renderer that sits alongside the classic view.
+   Driven entirely by js/structure-view.js; this block is purely
+   presentational. Uses the same --pt-* variables as the classic view (see
+   above) for palette consistency, plus a handful of --sv-* variables for
+   shape-specific fills that don't have a classic-view equivalent.
+   ========================================================================== */
+
+div.ExecutionVisualizer {
+  --sv-list-val-bg: #eef4ff;
+  --sv-list-ptr-bg: #ffffff;
+  --sv-tree-bg: #eaf7ee;
+  --sv-tree-null-bg: #ffffff;
+  --sv-graph-bg: #eef4ff;
+  --sv-graph-visited-bg: #d7f0da;
+  --sv-array-bg: #fff8dc;
+  --sv-bucket-key-bg: #fff3c4;
+  --sv-bucket-val-bg: #ffffff;
+}
+
+div.ExecutionVisualizer .sv-root {
+  margin-bottom: 20px;
+  font-family: var(--pt-sans);
+}
+
+div.ExecutionVisualizer .sv-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+div.ExecutionVisualizer .sv-toggle-group {
+  display: inline-flex;
+  border: 1px solid var(--pt-border);
+  border-radius: var(--pt-radius-sm);
+  overflow: hidden;
+}
+
+div.ExecutionVisualizer .sv-toggle-group button {
+  border: 0;
+  background: var(--pt-bg-card);
+  color: var(--pt-text);
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border-right: 1px solid var(--pt-border);
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+div.ExecutionVisualizer .sv-toggle-group button:last-child {
+  border-right: 0;
+}
+
+div.ExecutionVisualizer .sv-toggle-group button:hover {
+  background: var(--pt-accent-soft);
+}
+
+div.ExecutionVisualizer .sv-toggle-group button.sv-active {
+  background: var(--pt-accent);
+  color: #ffffff;
+}
+
+div.ExecutionVisualizer .sv-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--pt-text-muted);
+  cursor: pointer;
+}
+
+div.ExecutionVisualizer .sv-dark-btn {
+  border: 1px solid var(--pt-border);
+  border-radius: var(--pt-radius-sm);
+  background: var(--pt-bg-card);
+  color: var(--pt-text);
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+
+div.ExecutionVisualizer .sv-dark-btn:hover,
+div.ExecutionVisualizer .sv-dark-btn.sv-active {
+  background: var(--pt-accent);
+  color: #ffffff;
+  border-color: var(--pt-accent);
+}
+
+div.ExecutionVisualizer .sv-message {
+  padding: 14px;
+  color: var(--pt-text-muted);
+  font-style: italic;
+  font-size: 14px;
+}
+
+div.ExecutionVisualizer .sv-canvas-wrap {
+  background: var(--pt-bg-page);
+  border: 1px solid var(--pt-border);
+  border-radius: var(--pt-radius);
+  overflow-x: auto;
+  margin-bottom: 14px;
+}
+
+div.ExecutionVisualizer .sv-canvas {
+  display: block;
+}
+
+/* ---- SVG shape styling ---- */
+
+div.ExecutionVisualizer .sv-node-text {
+  font-family: var(--pt-mono);
+  font-size: 13px;
+  fill: var(--pt-text);
+}
+
+div.ExecutionVisualizer .sv-label,
+div.ExecutionVisualizer .sv-ptr-label {
+  font-family: var(--pt-sans);
+  font-size: 12px;
+  font-weight: 700;
+  fill: var(--pt-accent);
+}
+
+div.ExecutionVisualizer .sv-null-text {
+  font-family: var(--pt-sans);
+  font-size: 11px;
+  font-style: italic;
+  fill: var(--pt-text-muted);
+}
+
+div.ExecutionVisualizer .sv-array-name {
+  font-family: var(--pt-sans);
+  font-size: 12px;
+  font-weight: 700;
+  fill: var(--pt-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+div.ExecutionVisualizer .sv-array-index {
+  font-family: var(--pt-sans);
+  font-size: 10px;
+  fill: var(--pt-text-muted);
+}
+
+/* linked lists */
+div.ExecutionVisualizer .sv-node-rect {
+  stroke: var(--pt-border);
+  stroke-width: 1.5;
+}
+
+div.ExecutionVisualizer .sv-list-val {
+  fill: var(--sv-list-val-bg);
+}
+
+div.ExecutionVisualizer .sv-list-ptr {
+  fill: var(--sv-list-ptr-bg);
+}
+
+div.ExecutionVisualizer .sv-edge,
+div.ExecutionVisualizer .sv-ptr-arrow {
+  stroke: var(--pt-accent);
+  stroke-width: 2.5;
+}
+
+div.ExecutionVisualizer .sv-ptr-arrow {
+  stroke-width: 2;
+}
+
+div.ExecutionVisualizer .sv-edge-arrow,
+div.ExecutionVisualizer .sv-ptr-arrow-head,
+div.ExecutionVisualizer .sv-graph-arrow-head {
+  fill: var(--pt-accent);
+}
+
+/* trees */
+div.ExecutionVisualizer .sv-tree-node {
+  fill: var(--sv-tree-bg);
+  stroke: var(--pt-text);
+  stroke-width: 1.5;
+}
+
+div.ExecutionVisualizer .sv-tree-edge {
+  stroke: var(--pt-text-muted);
+  stroke-width: 2.5;
+}
+
+div.ExecutionVisualizer .sv-tree-edge-null {
+  stroke-dasharray: 3 3;
+  stroke-width: 1.5;
+}
+
+div.ExecutionVisualizer .sv-tree-null-marker {
+  fill: var(--sv-tree-null-bg);
+  stroke: var(--pt-text-muted);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 2;
+}
+
+/* graphs */
+div.ExecutionVisualizer .sv-graph-node {
+  fill: var(--sv-graph-bg);
+  stroke: var(--pt-text);
+  stroke-width: 1.5;
+}
+
+div.ExecutionVisualizer .sv-graph-node-visited {
+  fill: var(--sv-graph-visited-bg);
+  stroke: var(--pt-accent-dark);
+}
+
+div.ExecutionVisualizer .sv-graph-edge {
+  stroke: var(--pt-text-muted);
+  stroke-width: 2;
+}
+
+div.ExecutionVisualizer .sv-graph-edge-directed {
+  stroke: var(--pt-accent);
+}
+
+/* arrays */
+div.ExecutionVisualizer .sv-array-cell {
+  fill: var(--sv-array-bg);
+  stroke: var(--pt-border);
+  stroke-width: 1.5;
+}
+
+/* hashmaps */
+div.ExecutionVisualizer .sv-bucket-key {
+  fill: var(--sv-bucket-key-bg);
+  stroke: var(--pt-border);
+}
+
+div.ExecutionVisualizer .sv-bucket-val {
+  fill: var(--sv-bucket-val-bg);
+  stroke: var(--pt-border);
+}
+
+/* the single highest-value bit: whatever the line that just executed
+   changed gets an amber flash fill, in every shape. Only fill is set at
+   0% -- with no 100% keyframe, the browser animates back to whatever the
+   element's own (non-.sv-changed) class already gives it as a fill, so
+   this works generically across every shape's own base color without
+   needing to know it in advance. */
+div.ExecutionVisualizer .sv-changed {
+  animation: sv-flash-fill 800ms ease-out;
+}
+
+@keyframes sv-flash-fill {
+  0% { fill: var(--pt-flash-bg-strong); }
+}
+
+/* ---- Call stack table ---- */
+
+div.ExecutionVisualizer .sv-callstack-wrap {
+  margin-bottom: 12px;
+}
+
+div.ExecutionVisualizer .sv-section-label {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--pt-text-muted);
+  margin-bottom: 6px;
+}
+
+div.ExecutionVisualizer .sv-callstack-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid var(--pt-border);
+  border-radius: var(--pt-radius-sm);
+  overflow: hidden;
+  font-family: var(--pt-mono);
+  font-size: 13px;
+}
+
+div.ExecutionVisualizer .sv-callstack-table th {
+  background: var(--pt-bg-page);
+  color: var(--pt-text-muted);
+  font-family: var(--pt-sans);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  text-align: left;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--pt-border);
+}
+
+div.ExecutionVisualizer .sv-callstack-table td {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--pt-border-soft);
+  color: var(--pt-text);
+}
+
+div.ExecutionVisualizer .sv-callstack-table tr:last-child td {
+  border-bottom: 0;
+}
+
+div.ExecutionVisualizer .sv-callstack-row-current {
+  background: var(--pt-accent-soft);
+  font-weight: 700;
+}
+
+/* ---- Output line ---- */
+
+div.ExecutionVisualizer .sv-output-line {
+  font-family: var(--pt-mono);
+  font-size: 13px;
+  color: var(--pt-text-muted);
+  padding: 8px 2px 0 2px;
+}
+
+/* END structure view */

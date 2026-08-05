@@ -2727,6 +2727,17 @@ var DataVisualizer = /** @class */ (function () {
             highlight_frame(myViz.owner.generateID('globals'));
         }
         myViz.owner.try_hook("end_renderDataStructures", { myViz: myViz.owner /* tricky! use owner to be safe */ });
+        // Structure View hook (additive, optional): a second, teaching-style
+        // renderer implemented entirely in js/structure-view.js. Never lets
+        // an error there affect this classic renderer.
+        if (window.StructureView && typeof window.StructureView.update === 'function') {
+            try {
+                window.StructureView.update(curEntry, curInstr, myViz.curTrace);
+            }
+            catch (svErr) {
+                console.error('StructureView hook error:', svErr);
+            }
+        }
     };
     // rendering functions, which all take a d3 dom element to anchor the
     // new element to render

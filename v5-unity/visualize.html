@@ -11,7 +11,18 @@
   <title>Visualize Python, Java, JavaScript, C, C++, Ruby Code Execution</title>
 
   <meta http-equiv="Content-type" content="text/html; charset=UTF-8"/>
+  <script type="text/javascript" src="js/structure-view.js" charset="utf-8"></script>
   <script type="text/javascript" src="build/visualize.bundle.js?ef8faad903" charset="utf-8"></script>
+
+  <!-- The bundle above embeds a frozen copy of pytutor.css via webpack's
+       style-loader (baked in at whatever point it was last built, long
+       before this file's edits), injected as inline <style> tags during
+       script execution. This <link> is placed AFTER that script tag so it
+       lands later in the DOM once the browser resumes parsing, giving its
+       rules cascade priority over the stale embedded copy for any
+       same-specificity selector -- letting on-disk edits to pytutor.css
+       actually take effect without rebuilding the bundle. -->
+  <link rel="stylesheet" type="text/css" href="css/pytutor.css"/>
 
 </head>
 
