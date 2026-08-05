@@ -7,15 +7,13 @@
 # remember --rm or else stale old containers will be left around!
 # use "docker ps -a" to see all containers
 
-# don't use 'latest' tag since that might change
-FROM ubuntu:14.04.1
+# trusty (14.04) packages have been fully retired from Canonical's
+# archives (not just relocated to old-releases.ubuntu.com), so this uses
+# bionic (18.04) instead -- the last LTS where the 'python' package
+# still resolves to Python 2, which run_cpp_backend.py requires
+FROM ubuntu:18.04
 MAINTAINER Philip Guo <philip@pgbovine.net>
 
-# if apt-get doesn't work, then follow these instructions:
-# http://stackoverflow.com/questions/24991136/docker-build-could-not-resolve-archive-ubuntu-com-apt-get-fails-to-install-a
-# Uncomment the following line in /etc/default/docker DOCKER_OPTS="--dns 8.8.8.8 --dns 8.8.4.4"
-# Restart the Docker service sudo service docker restart
-#
 # to get gcc and g++, Valgrind needs libc6-dbg apparently
 RUN apt-get update && apt-get install -y \
   build-essential \
@@ -29,7 +27,7 @@ ADD . /tmp/opt-cpp-backend
 
 # we need to compile Valgrind from scratch within the container (hence
 # 'make clean' first) to make it work from within the container, ergh
-RUN cd /tmp/opt-cpp-backend/valgrind-3.11.0 && make clean && ./autogen.sh && ./configure --prefix=`pwd`/inst && make && make install
+RUN cd /tmp/opt-cpp-backend/valgrind-3.11.0 && (make clean || true) && ./autogen.sh && ./configure --prefix=`pwd`/inst && make && make install
 
 RUN useradd netuser
 

@@ -1,0 +1,20 @@
+# These are Unix build scripts and autotools-generated config files
+# that run inside Linux Docker containers. On a Windows checkout with
+# core.autocrlf=true, git normally reintroduces CRLF line endings,
+# which corrupts shebang lines (#!/bin/sh\r) and breaks aclocal/autoconf
+# parsing. Force LF regardless of platform so the Docker builds
+# (v4-cokapi/backends/c_cpp and .../java) keep working after a fresh
+# clone on Windows.
+*.sh text eol=lf
+*.in text eol=lf
+*.am text eol=lf
+*.ac text eol=lf
+configure text eol=lf
+
+v4-cokapi/backends/c_cpp/valgrind-3.11.0/install-sh text eol=lf
+v4-cokapi/backends/c_cpp/valgrind-3.11.0/missing text eol=lf
+v4-cokapi/backends/c_cpp/valgrind-3.11.0/depcomp text eol=lf
+v4-cokapi/backends/c_cpp/valgrind-3.11.0/compile text eol=lf
+v4-cokapi/backends/c_cpp/valgrind-3.11.0/config.guess text eol=lf
+v4-cokapi/backends/c_cpp/valgrind-3.11.0/config.sub text eol=lf
+v4-cokapi/backends/java/run-java-backend.sh text eol=lf

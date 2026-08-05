@@ -74,7 +74,7 @@ if (args.length > 0) {
 // spawn a shell
 // http://nodejs.org/api/child_process.html#child_process_child_process_execfile_file_args_options_callback
 
-var TIMEOUT_SECS = 15;
+var TIMEOUT_SECS = 30;
 
 var MAX_BUFFER_SIZE = 10 * 1024 * 1024;
 
@@ -151,7 +151,7 @@ function exec_js_handler(useJSONP /* use bind first */, isTypescript /* use bind
   var args = [];
 
   // must match the docker setup in backends/javascript/Dockerfile
-  exeFile = '/usr/bin/docker'; // absolute path to docker executable
+  exeFile = 'C:/Program Files/Docker/Docker/resources/bin/docker.exe'; // absolute path to docker executable
   args.push('run', '-m', MEM_LIMIT, '--rm', '--user=netuser', '--net=none', '--cap-drop', 'all', 'pgbovine/cokapi-js:v1',
             '/tmp/javascript/node-v6.0.0-linux-x64/bin/node', // custom Node.js version
             '--expose-debug-as=Debug',
@@ -188,7 +188,7 @@ function exec_pyanaconda_handler(useJSONP /* use bind first */, req, res) {
   var args = [];
 
   // must match the docker setup in backends/javascript/Dockerfile
-  exeFile = '/usr/bin/docker'; // absolute path to docker executable
+  exeFile = 'C:/Program Files/Docker/Docker/resources/bin/docker.exe'; // absolute path to docker executable
   args.push('run', '-m', MEM_LIMIT, '--rm', '--user=netuser', '--net=none', '--cap-drop', 'all', 'pgbovine/cokapi-python-anaconda:v1',
             'python',
             '/tmp/python/generate_json_trace.py',
@@ -273,7 +273,7 @@ function exec_java_handler(useJSONP /* use bind first */, req, res) {
   var inputObjJSON = JSON.stringify(inputObj);
 
   // must match the docker setup in backends/java/Dockerfile
-  exeFile = '/usr/bin/docker'; // absolute path to docker executable
+  exeFile = 'C:/Program Files/Docker/Docker/resources/bin/docker.exe'; // absolute path to docker executable
   args.push('run', '-m', MEM_LIMIT, '--rm', '--user=netuser', '--net=none', '--cap-drop', 'all', 'pgbovine/cokapi-java:v1',
             '/tmp/run-java-backend.sh',
             inputObjJSON);
@@ -300,7 +300,7 @@ function exec_ruby_handler(useJSONP /* use bind first */, req, res) {
   var args = [];
 
   // must match the docker setup in backends/ruby/Dockerfile
-  exeFile = '/usr/bin/docker'; // absolute path to docker executable
+  exeFile = 'C:/Program Files/Docker/Docker/resources/bin/docker.exe'; // absolute path to docker executable
   args.push('run', '-m', MEM_LIMIT, '--rm', '--user=netuser', '--net=none', '--cap-drop', 'all', 'pgbovine/cokapi-ruby:v1',
             '/tmp/ruby/ruby',
             '/tmp/ruby/pg_logger.rb',
@@ -331,7 +331,7 @@ function exec_cpp_handler(useCPP /* use bind first */, useJSONP /* use bind firs
   var args = [];
 
   // must match the docker setup in backends/c_cpp/Dockerfile
-  exeFile = '/usr/bin/docker'; // absolute path to docker executable
+  exeFile = 'C:/Program Files/Docker/Docker/resources/bin/docker.exe'; // absolute path to docker executable
   args.push('run', '-m', MEM_LIMIT, '--rm', '--user=netuser', '--net=none', '--cap-drop', 'all', 'pgbovine/opt-cpp-backend:v1',
             'python',
             '/tmp/opt-cpp-backend/run_cpp_backend.py',

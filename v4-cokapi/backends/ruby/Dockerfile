@@ -9,15 +9,13 @@
 # remember --rm or else stale old containers will be left around!
 # use "docker ps -a" to see all containers
 
-# don't use 'latest' tag since that might change
-FROM ubuntu:14.04.1
+# trusty (14.04) packages have been fully retired from Canonical's
+# archives (not just relocated to old-releases.ubuntu.com), so this uses
+# bionic (18.04) instead -- the last LTS where the 'python' package
+# still resolves to Python 2, which golden_test.py requires
+FROM ubuntu:18.04
 MAINTAINER Philip Guo <philip@pgbovine.net>
 
-# if apt-get doesn't work, then follow these instructions:
-# http://stackoverflow.com/questions/24991136/docker-build-could-not-resolve-archive-ubuntu-com-apt-get-fails-to-install-a
-# Uncomment the following line in /etc/default/docker DOCKER_OPTS="--dns 8.8.8.8 --dns 8.8.4.4"
-# Restart the Docker service sudo service docker restart
-#
 # lots of packages required especially to build ruby and to use the compiled version of 'gem'
 RUN apt-get update && apt-get install -y \
   python \
@@ -40,10 +38,12 @@ RUN mkdir /tmp/ruby/ruby-2.2.2-custom-OPT/
 RUN cd /tmp/ruby/ruby-2.2.2 && ./configure --prefix=/tmp/ruby/ruby-2.2.2-custom-OPT/
 # beware takes a long time! so make sure we cache the build
 RUN cd /tmp/ruby/ruby-2.2.2 && make && make install
-# install custom gem
-# specify a non-https source in .gemrc to avoid certificate problems
-COPY .gemrc /root
-RUN /tmp/ruby/ruby-2.2.2-custom-OPT/bin/gem install debug_inspector
+# install custom gem: this old Ruby's ext/openssl doesn't build against
+# modern OpenSSL 1.1+, so `gem install` can't talk to rubygems.org over
+# HTTPS -- install a pre-fetched .gem file locally instead, which needs
+# no network/TLS at all
+COPY debug_inspector-1.2.0.gem /tmp/ruby/
+RUN /tmp/ruby/ruby-2.2.2-custom-OPT/bin/gem install --local /tmp/ruby/debug_inspector-1.2.0.gem
 
 COPY pg_logger.rb /tmp/ruby/
 RUN cd /tmp/ruby && ln -s ruby-2.2.2-custom-OPT/bin/ruby

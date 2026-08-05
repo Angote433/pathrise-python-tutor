@@ -25,11 +25,12 @@ RUN apt-get update && apt-get install -y \
 RUN mkdir /tmp/javascript
 ADD node-v6.0.0-linux-x64.tar.xz /tmp/javascript
 
-# use this to tell npm what dependencies to install
+# the bundled Node v6-era npm can no longer talk to the modern npm
+# registry API, so dependencies are pre-installed on the host with a
+# current npm and copied in directly instead of running `npm install`
+# inside the container
 ADD package.json /tmp/javascript
-
-# - customize $PATH to run my version of npm
-RUN cd /tmp/javascript/ && PATH=/tmp/javascript/node-v6.0.0-linux-x64/bin/:$PATH npm install
+ADD node_modules /tmp/javascript/node_modules
 
 # add tests to container
 ADD golden_test.py /tmp/javascript

@@ -22080,11 +22080,11 @@ var AbstractBaseFrontend = /** @class */ (function () {
         // these settings are all customized for my own server setup,
         // so you will need to customize for your server:
         this.serverRoot = (window.location.protocol === 'https:') ?
-            'https://cokapi.com/' : // my certificate for https is registered via cokapi.com, so use it for now
-            'http://cokapi.com/'; // try cokapi.com so that hopefully it works through firewalls better than directly using IP addr
+            'http://localhost:3000/' : // my certificate for https is registered via cokapi.com, so use it for now
+            'http://localhost:3000/'; // try cokapi.com so that hopefully it works through firewalls better than directly using IP addr
         // (but that's just an unsubstantiated hunch)
         // randomly pick one backup server to load balance:
-        this.backupHttpServerRoot = (Math.random() >= 0.5) ? 'http://45.33.41.179/' : 'http://23.239.12.25/';
+        this.backupHttpServerRoot = (Math.random() >= 0.5) ? 'http://localhost:3000/' : 'http://localhost:3000/';
         // see ../../v4-cokapi/cokapi.js for details
         this.langSettingToJsonpEndpoint = {
             '2': null,
@@ -22430,8 +22430,8 @@ var AbstractBaseFrontend = /** @class */ (function () {
                 $.ajax({
                     url: jsonp_endpoint,
                     // for testing
-                    //url: 'http://cokapi.com/test_failure_jsonp',
-                    //url: 'http://cokapi.com/unknown_url',
+                    //url: 'http://localhost:3000/test_failure_jsonp',
+                    //url: 'http://localhost:3000/unknown_url',
                     // The name of the callback parameter, as specified by the YQL service
                     jsonp: "callback",
                     dataType: "jsonp",
