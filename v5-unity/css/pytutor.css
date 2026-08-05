@@ -1415,6 +1415,10 @@ div.ExecutionVisualizer .sv-canvas {
   display: block;
 }
 
+/* the SVG's own viewBox is computed from its content's actual bounding box
+   each render (see structure-view.js), so the canvas itself never clips --
+   this wrap only needs to scroll for structures wider than the panel */
+
 /* ---- SVG shape styling ---- */
 
 div.ExecutionVisualizer .sv-node-text {
@@ -1481,6 +1485,14 @@ div.ExecutionVisualizer .sv-edge-arrow,
 div.ExecutionVisualizer .sv-ptr-arrow-head,
 div.ExecutionVisualizer .sv-graph-arrow-head {
   fill: var(--pt-accent);
+}
+
+/* the curved edge from an off-row (not-yet-reachable) node up into the
+   main-row node it's about to be spliced into -- dashed to read as
+   "pending", matching the null-edge convention used in trees */
+div.ExecutionVisualizer .sv-edge-curve {
+  stroke: var(--pt-accent);
+  stroke-dasharray: 5 4;
 }
 
 /* trees */
@@ -1564,6 +1576,8 @@ div.ExecutionVisualizer .sv-changed {
 
 div.ExecutionVisualizer .sv-callstack-wrap {
   margin-bottom: 12px;
+  padding-left: 2px;
+  padding-right: 2px;
 }
 
 div.ExecutionVisualizer .sv-section-label {
@@ -1586,12 +1600,16 @@ div.ExecutionVisualizer .sv-callstack-table {
   font-size: 13px;
 }
 
+/* NOTE: no text-transform here -- these header cells double as the
+   variable-name columns (e.g. "newNode"), and uppercasing them would
+   destroy meaningful camelCase casing. The two fixed labels ("Method
+   Call", "Line") are already capitalized in source instead. */
 div.ExecutionVisualizer .sv-callstack-table th {
   background: var(--pt-bg-page);
   color: var(--pt-text-muted);
   font-family: var(--pt-sans);
   font-size: 11px;
-  text-transform: uppercase;
+  font-weight: 700;
   letter-spacing: 0.03em;
   text-align: left;
   padding: 7px 10px;
@@ -1620,6 +1638,30 @@ div.ExecutionVisualizer .sv-output-line {
   font-size: 13px;
   color: var(--pt-text-muted);
   padding: 8px 2px 0 2px;
+}
+
+div.ExecutionVisualizer .sv-output-label {
+  text-transform: uppercase;
+  font-family: var(--pt-sans);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+div.ExecutionVisualizer .sv-output-empty {
+  font-style: italic;
+}
+
+div.ExecutionVisualizer .sv-output-sep {
+  color: var(--pt-text-muted);
+  opacity: 0.6;
+}
+
+div.ExecutionVisualizer .sv-output-wrapped {
+  display: block;
+  white-space: pre-wrap;
+  margin-top: 4px;
+  color: var(--pt-text);
 }
 
 /* END structure view */

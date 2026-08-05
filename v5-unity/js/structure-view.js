@@ -349,6 +349,34 @@
     return result;
   }
 
+  function walkChainReach(heap, startId, linkField) {
+    var order = [];
+    var visited = {};
+    var cur = startId;
+    var guard = 0;
+    while (cur !== null && cur !== undefined && !visited[cur] && guard < 10000) {
+      visited[cur] = true;
+      order.push(cur);
+      var obj = heapGet(heap, cur);
+      if (!Array.isArray(obj) || obj[0] !== 'INSTANCE') break;
+      var nextVal = null;
+      for (var i = 2; i < obj.length; i++) {
+        if (obj[i][0] === linkField) { nextVal = obj[i][1]; break; }
+      }
+      if (isNullRef(nextVal)) break;
+      cur = refId(nextVal);
+      guard++;
+    }
+    return order;
+  }
+
+  // A node/chain is only merged into the reachable-from-head "main row" if
+  // it's actually reachable by walking from the head-most pointer -- merely
+  // sharing a target node (e.g. a new node whose .next already points into
+  // the middle of the list, before the splice that links it in) is NOT
+  // enough. Everything else renders on its own row below, so an in-progress
+  // insertion/splice is visibly incomplete until the step that actually
+  // links it in.
   function detectLinkedLists(heap, frame, allVars) {
     var classInfo = classifyInstanceClasses(heap);
     var listClassNames = Object.keys(classInfo).filter(function (cn) { return classInfo[cn].kind === 'list'; });
@@ -374,55 +402,112 @@
     var currentFrameRefs = findListRefs(frameVars(frame));
     if (roots.length === 0) return null;
 
-    // group roots into distinct chains by walking `next` from each; chains
-    // sharing any node are merged so e.g. dummy/tail on the same result
-    // list render as one row, not two
-    var nodeToChain = {}; // heap id -> chain index
-    var chains = []; // [{nodeIds: [...]}]
+    // group roots that share any node into one connected component (as
+    // before -- this just determines which roots belong on the SAME
+    // diagram), recording each root's own individual walk so we can later
+    // work out which one is head-reachable
+    var nodeToGroup = {};
+    var groups = []; // [{ nodeIds: [...], className, linkField, rootWalks: [{root, order}] }]
 
     roots.forEach(function (r) {
-      var className = heapGet(heap, r.id)[1];
+      var obj = heapGet(heap, r.id);
+      if (!Array.isArray(obj) || obj[0] !== 'INSTANCE') return;
+      var className = obj[1];
       var linkField = classInfo[className].linkFields[0];
-      var visited = {};
-      var order = [];
-      var cur = r.id;
-      var guard = 0;
-      while (cur !== null && cur !== undefined && !visited[cur] && guard < 10000) {
-        visited[cur] = true;
-        order.push(cur);
-        var obj = heapGet(heap, cur);
-        if (!Array.isArray(obj) || obj[0] !== 'INSTANCE') break;
-        var nextVal = null;
-        for (var i = 2; i < obj.length; i++) {
-          if (obj[i][0] === linkField) { nextVal = obj[i][1]; break; }
-        }
-        if (isNullRef(nextVal)) break;
-        cur = refId(nextVal);
-        guard++;
-      }
+      var order = walkChainReach(heap, r.id, linkField);
 
-      // find an existing chain that shares a node with this walk
       var mergeIdx = -1;
       for (var k = 0; k < order.length; k++) {
-        if (nodeToChain[order[k]] !== undefined) { mergeIdx = nodeToChain[order[k]]; break; }
+        if (nodeToGroup[order[k]] !== undefined) { mergeIdx = nodeToGroup[order[k]]; break; }
       }
-      var chainIdx;
+      var groupIdx;
       if (mergeIdx === -1) {
-        chains.push({ nodeIds: order.slice(), className: className, linkField: linkField });
-        chainIdx = chains.length - 1;
+        groups.push({ nodeIds: [], className: className, linkField: linkField, rootWalks: [] });
+        groupIdx = groups.length - 1;
       } else {
-        chainIdx = mergeIdx;
-        var existing = chains[chainIdx].nodeIds;
-        order.forEach(function (nid) { if (existing.indexOf(nid) === -1) existing.push(nid); });
+        groupIdx = mergeIdx;
       }
-      order.forEach(function (nid) { nodeToChain[nid] = chainIdx; });
+      var group = groups[groupIdx];
+      order.forEach(function (nid) {
+        if (group.nodeIds.indexOf(nid) === -1) group.nodeIds.push(nid);
+        nodeToGroup[nid] = groupIdx;
+      });
+      group.rootWalks.push({ root: r, order: order });
     });
 
-    // visual pointer labels: current frame only, per spec
-    chains.forEach(function (c) { c.pointers = []; });
+    // per group: the "main row" is the walk from whichever root reaches the
+    // most nodes (ties broken by earliest discovery order, i.e. roots[]
+    // order -- which for a single frame is declaration order). Any other
+    // root's walk that reaches a node NOT on the main row forms its own
+    // secondary (below-the-main-row) chain, up to the point where it joins
+    // a main-row node; roots that point straight at the main row (no
+    // not-yet-reachable nodes of their own) don't get a secondary row at
+    // all -- they're just an extra pointer label onto the main row.
+    var chains = groups.map(function (group) {
+      var mainWalk = group.rootWalks[0];
+      group.rootWalks.forEach(function (rw) {
+        if (rw.order.length > mainWalk.order.length) mainWalk = rw;
+      });
+      var mainSet = {};
+      mainWalk.order.forEach(function (nid) { mainSet[nid] = true; });
+
+      var secondaryRows = [];
+      var claimedOffRow = {};
+      group.rootWalks.forEach(function (rw) {
+        if (rw === mainWalk) return;
+        var offNodes = [];
+        var mergeTargetId = null;
+        for (var i = 0; i < rw.order.length; i++) {
+          var nid = rw.order[i];
+          if (mainSet[nid]) { mergeTargetId = nid; break; }
+          offNodes.push(nid);
+        }
+        if (offNodes.length === 0) return;
+
+        var mergeIdx = -1;
+        for (var j = 0; j < offNodes.length; j++) {
+          if (claimedOffRow[offNodes[j]] !== undefined) { mergeIdx = claimedOffRow[offNodes[j]]; break; }
+        }
+        var rowIdx;
+        if (mergeIdx === -1) {
+          secondaryRows.push({ nodeIds: [], mergeTargetId: mergeTargetId, pointers: [] });
+          rowIdx = secondaryRows.length - 1;
+        } else {
+          rowIdx = mergeIdx;
+        }
+        var row = secondaryRows[rowIdx];
+        offNodes.forEach(function (nid) {
+          if (row.nodeIds.indexOf(nid) === -1) row.nodeIds.push(nid);
+          claimedOffRow[nid] = rowIdx;
+        });
+        if (row.mergeTargetId === null) row.mergeTargetId = mergeTargetId;
+      });
+
+      return {
+        className: group.className,
+        linkField: group.linkField,
+        mainRow: mainWalk.order,
+        secondaryRows: secondaryRows,
+        pointers: [],
+      };
+    });
+
+    // visual pointer labels: current frame only, per spec; tag each with
+    // whichever row (main, or a specific secondary row) its target lives on
     currentFrameRefs.forEach(function (r) {
-      var chainIdx = nodeToChain[r.id];
-      if (chainIdx !== undefined) chains[chainIdx].pointers.push({ name: r.name, id: r.id });
+      var groupIdx = nodeToGroup[r.id];
+      if (groupIdx === undefined) return;
+      var chain = chains[groupIdx];
+      if (chain.mainRow.indexOf(r.id) !== -1) {
+        chain.pointers.push({ name: r.name, id: r.id });
+        return;
+      }
+      for (var s = 0; s < chain.secondaryRows.length; s++) {
+        if (chain.secondaryRows[s].nodeIds.indexOf(r.id) !== -1) {
+          chain.secondaryRows[s].pointers.push({ name: r.name, id: r.id });
+          break;
+        }
+      }
     });
 
     return { type: 'linkedlist', chains: chains, classInfo: classInfo };
@@ -634,15 +719,11 @@
     ensureArrowMarker(svg, 'svArrowNext', 'sv-edge-arrow');
     ensureArrowMarker(svg, 'svArrowPtr', 'sv-ptr-arrow-head');
 
-    var startY = cursor.y;
-    data.chains.forEach(function (chain, chainIdx) {
-      var rowY = startY + chainIdx * LL_ROW_H + 55;
-      var x = 20;
+    data.chains.forEach(function (chain) {
+      var mainRowY = cursor.y + 55;
+      var pos = {}; // nodeId -> {x, right, top, bottom, cx}
 
-      // slot allocator for pointer labels: alternate above/below per node
-      var nodeSlotCounts = {};
-
-      chain.nodeIds.forEach(function (nodeId, i) {
+      function drawNode(nodeId, nodeX, rowY) {
         var obj = heapGet(heap, nodeId);
         var prevObj = prevHeap ? heapGet(prevHeap, nodeId) : null;
         var info = data.classInfo[chain.className];
@@ -668,29 +749,33 @@
           displayVal = parts.join(',');
         }
 
-        var nodeX = x;
         var g = svgEl('g', { class: 'sv-node' });
         g.appendChild(rect(nodeX, rowY, LL_CELL_W, LL_NODE_H, 'sv-node-rect sv-list-val' + (changed ? ' sv-changed' : '')));
         g.appendChild(rect(nodeX + LL_CELL_W, rowY, LL_CELL_W, LL_NODE_H, 'sv-node-rect sv-list-ptr'));
         g.appendChild(textNode(nodeX + LL_CELL_W / 2, rowY + LL_NODE_H / 2 + 5, displayVal, 'sv-node-text'));
         svg.appendChild(g);
 
-        // record node center-top/bottom for pointer labels and edges
-        chain.nodeIds[i] = nodeId; // no-op, keep id
-        var nodeInfo = { x: nodeX, y: rowY, w: LL_NODE_W, h: LL_NODE_H, cx: nodeX + LL_NODE_W / 2 };
-        if (!chain._pos) chain._pos = {};
-        chain._pos[nodeId] = nodeInfo;
+        pos[nodeId] = {
+          x: nodeX, right: nodeX + LL_NODE_W, top: rowY, bottom: rowY + LL_NODE_H,
+          cx: nodeX + LL_NODE_W / 2,
+        };
+      }
 
-        // draw edge to next node (or a terminator)
-        var isLast = (i === chain.nodeIds.length - 1);
-        var arrowStartX = nodeX + LL_CELL_W + LL_CELL_W - 4;
-        var arrowY = rowY + LL_NODE_H / 2;
-        if (!isLast) {
-          svg.appendChild(line(arrowStartX, arrowY, nodeX + LL_NODE_W + LL_GAP - 6, arrowY, 'sv-edge', 'svArrowNext'));
+      // draws the "next" edge for one node in a left-to-right row: starts
+      // right at the pointer cell's edge (never inside it) and ends just
+      // short of the target so the arrowhead lands fully outside both boxes
+      function drawNextEdge(nodeId, nextNodeId) {
+        var p = pos[nodeId];
+        var arrowStartX = p.right + 2;
+        var arrowY = p.top + LL_NODE_H / 2;
+        if (nextNodeId) {
+          var nextP = pos[nextNodeId];
+          svg.appendChild(line(arrowStartX, arrowY, nextP.x - 6, arrowY, 'sv-edge', 'svArrowNext'));
         } else {
           // only label it "null" if the node's own link field really is
           // null -- the walk can also end early on a cycle or truncation
           // guard, which isn't a true null terminator
+          var obj = heapGet(heap, nodeId);
           var ownNextVal = null;
           if (Array.isArray(obj)) {
             for (var mm = 2; mm < obj.length; mm++) {
@@ -698,33 +783,103 @@
             }
           }
           var terminatorLabel = isNullRef(ownNextVal) ? 'null' : '…';
-          var nullX = nodeX + LL_NODE_W + 22;
-          svg.appendChild(line(arrowStartX, arrowY, nullX - 14, arrowY, 'sv-edge', 'svArrowNext'));
-          svg.appendChild(textNode(nullX + 8, arrowY + 5, terminatorLabel, 'sv-null-text', 'start'));
+          var textX = p.right + LL_GAP * 0.55;
+          svg.appendChild(line(arrowStartX, arrowY, textX - 10, arrowY, 'sv-edge', 'svArrowNext'));
+          svg.appendChild(textNode(textX, arrowY + 5, terminatorLabel, 'sv-null-text', 'start'));
         }
+      }
 
+      // main row: left to right starting at x=20
+      var x = 20;
+      chain.mainRow.forEach(function (nodeId) {
+        drawNode(nodeId, x, mainRowY);
         x += LL_NODE_W + LL_GAP;
       });
-
-      // pointer labels
-      (chain.pointers || []).forEach(function (ptr) {
-        var pos = chain._pos[ptr.id];
-        if (!pos) return;
-        var count = nodeSlotCounts[ptr.id] || 0;
-        nodeSlotCounts[ptr.id] = count + 1;
-        var above = (count % 2 === 0);
-        var offset = Math.floor(count / 2) * 18;
-        var labelY = above ? rowY - 12 - offset : rowY + LL_NODE_H + 22 + offset;
-        var arrowY1 = above ? labelY + 4 : labelY - 14;
-        var arrowY2 = above ? rowY - 2 : rowY + LL_NODE_H + 2;
-        svg.appendChild(line(pos.cx, arrowY1, pos.cx, arrowY2, 'sv-ptr-arrow', 'svArrowPtr'));
-        svg.appendChild(textNode(pos.cx, labelY, ptr.name, 'sv-ptr-label'));
+      var mainRowRightEdge = x;
+      chain.mainRow.forEach(function (nodeId, i) {
+        var isLast = (i === chain.mainRow.length - 1);
+        drawNextEdge(nodeId, isLast ? null : chain.mainRow[i + 1]);
       });
 
-      x = Math.max(x, 20);
-      cursor.maxX = Math.max(cursor.maxX, x + 40);
+      // secondary rows: not yet reachable from the main row's head, so they
+      // render on their own row below, horizontally aligned near the
+      // main-row node they'll eventually splice into, with a curved edge
+      // reaching up into it -- NOT merged into the main row just because
+      // they share that target node
+      var secondRowY = mainRowY + LL_ROW_H;
+      var usedSecondRow = false;
+      chain.secondaryRows.forEach(function (row) {
+        if (row.nodeIds.length === 0) return;
+        usedSecondRow = true;
+        var target = pos[row.mergeTargetId];
+        var n = row.nodeIds.length;
+        var lastX = target ? target.x : 20;
+        var startX = Math.max(20, lastX - (n - 1) * (LL_NODE_W + LL_GAP));
+        var sx = startX;
+        row.nodeIds.forEach(function (nodeId) {
+          drawNode(nodeId, sx, secondRowY);
+          sx += LL_NODE_W + LL_GAP;
+        });
+        row.nodeIds.forEach(function (nodeId, i) {
+          if (i < row.nodeIds.length - 1) drawNextEdge(nodeId, row.nodeIds[i + 1]);
+        });
+
+        // curved edge from the last off-row node up into the shared
+        // main-row target it will be spliced into
+        var lastNode = pos[row.nodeIds[row.nodeIds.length - 1]];
+        if (lastNode && target) {
+          var sx0 = lastNode.right + 2, sy0 = lastNode.top + LL_NODE_H / 2;
+          var ex0 = target.x - 6, ey0 = target.bottom - 6;
+          var pathD = 'M ' + sx0 + ' ' + sy0 + ' C ' + (sx0 + 30) + ' ' + sy0 + ', ' + (ex0 - 20) + ' ' + ey0 + ', ' + ex0 + ' ' + ey0;
+          svg.appendChild(svgEl('path', { d: pathD, class: 'sv-edge sv-edge-curve', fill: 'none', 'marker-end': 'url(#svArrowNext)' }));
+        }
+      });
+
+      // pointer labels: measure each label's actual rendered box (not a
+      // guessed offset) so the arrow can be shortened to stop right at its
+      // edge instead of drawing through the text; multiple labels on the
+      // same node stack using their real measured heights
+      function drawPointerLabels(pointers, rowY) {
+        var slotState = {};
+        (pointers || []).forEach(function (ptr) {
+          var p = pos[ptr.id];
+          if (!p) return;
+          if (!slotState[ptr.id]) {
+            slotState[ptr.id] = { aboveNext: rowY - 8, belowNext: rowY + LL_NODE_H + 8, count: 0 };
+          }
+          var st = slotState[ptr.id];
+          var above = (st.count % 2 === 0);
+          st.count++;
+
+          var estY = above ? st.aboveNext : st.belowNext;
+          var t = textNode(p.cx, estY, ptr.name, 'sv-ptr-label');
+          svg.appendChild(t);
+          var bb;
+          try { bb = t.getBBox(); } catch (e) { bb = { x: p.cx - 10, y: estY - 10, width: 20, height: 12 }; }
+
+          if (above) {
+            var dy = st.aboveNext - (bb.y + bb.height);
+            if (Math.abs(dy) > 0.01) { t.setAttribute('y', parseFloat(t.getAttribute('y')) + dy); bb.y += dy; }
+            var arrowStart = bb.y + bb.height + 3;
+            var arrowEnd = rowY - 2;
+            st.aboveNext = bb.y - 4;
+            svg.appendChild(line(p.cx, arrowStart, p.cx, arrowEnd, 'sv-ptr-arrow', 'svArrowPtr'));
+          } else {
+            var dy2 = st.belowNext - bb.y;
+            if (Math.abs(dy2) > 0.01) { t.setAttribute('y', parseFloat(t.getAttribute('y')) + dy2); bb.y += dy2; }
+            var arrowStart2 = bb.y - 3;
+            var arrowEnd2 = rowY + LL_NODE_H + 2;
+            st.belowNext = bb.y + bb.height + 4;
+            svg.appendChild(line(p.cx, arrowStart2, p.cx, arrowEnd2, 'sv-ptr-arrow', 'svArrowPtr'));
+          }
+        });
+      }
+      drawPointerLabels(chain.pointers, mainRowY);
+      chain.secondaryRows.forEach(function (row) { drawPointerLabels(row.pointers, secondRowY); });
+
+      cursor.maxX = Math.max(cursor.maxX, mainRowRightEdge + 40);
+      cursor.y = (usedSecondRow ? secondRowY + LL_NODE_H : mainRowY + LL_NODE_H) + 40;
     });
-    cursor.y = startY + data.chains.length * LL_ROW_H + 20;
   }
 
   // ==========================================================================
@@ -1035,8 +1190,12 @@
 
     var thead = document.createElement('thead');
     var headRow = document.createElement('tr');
-    headRow.appendChild(document.createElement('th')).textContent = 'method call';
-    headRow.appendChild(document.createElement('th')).textContent = 'line';
+    // fixed column labels are set pre-capitalized in source rather than via
+    // a CSS text-transform, since that transform would also uppercase the
+    // variable-name columns below and destroy meaningful camelCase casing
+    // (e.g. "newNode" -> "NEWNODE")
+    headRow.appendChild(document.createElement('th')).textContent = 'Method Call';
+    headRow.appendChild(document.createElement('th')).textContent = 'Line';
     colNames.forEach(function (n) {
       headRow.appendChild(document.createElement('th')).textContent = n;
     });
@@ -1071,7 +1230,44 @@
 
   function renderOutputLine(el, curEntry) {
     var out = curEntry.stdout || '';
-    el.textContent = 'Output — ' + (out.length ? JSON.stringify(out) : '(none yet)');
+    el.innerHTML = '';
+
+    var label = document.createElement('span');
+    label.className = 'sv-output-label';
+    label.textContent = 'Output';
+    el.appendChild(label);
+    el.appendChild(document.createTextNode(' — '));
+
+    if (!out.length) {
+      var empty = document.createElement('span');
+      empty.className = 'sv-output-empty';
+      empty.textContent = '(none yet)';
+      el.appendChild(empty);
+      return;
+    }
+
+    // stdout is a raw string with real newlines -- render it unescaped,
+    // either as short inline segments joined by a subtle separator, or as
+    // actual wrapped lines once it gets long
+    var lines = out.split('\n');
+    if (lines.length && lines[lines.length - 1] === '') lines.pop();
+
+    var body = document.createElement('span');
+    if (out.length > 120 || lines.length > 6) {
+      body.className = 'sv-output-wrapped';
+      body.textContent = lines.join('\n');
+    } else {
+      lines.forEach(function (ln, i) {
+        if (i > 0) {
+          var sep = document.createElement('span');
+          sep.className = 'sv-output-sep';
+          sep.textContent = ' ⏎ ';
+          body.appendChild(sep);
+        }
+        body.appendChild(document.createTextNode(ln));
+      });
+    }
+    el.appendChild(body);
   }
 
   // ==========================================================================
@@ -1110,9 +1306,30 @@
       else if (shape.type === 'hashmap') renderHashmaps(d.svg, shape, cursor);
     });
 
-    d.svg.setAttribute('width', Math.max(cursor.maxX, 300));
-    d.svg.setAttribute('height', Math.max(cursor.y, 60));
-    d.svg.setAttribute('viewBox', '0 0 ' + Math.max(cursor.maxX, 300) + ' ' + Math.max(cursor.y, 60));
+    // size the viewBox from the ACTUAL rendered content's bounding box
+    // (not the hand-tracked cursor, which shape renderers can under/over
+    // count e.g. for null markers or curved edges that poke past a node) so
+    // nothing -- on any side -- ever ends up outside the visible viewBox.
+    // Content is left-aligned by construction: the viewBox's origin sits
+    // exactly `pad` px before the leftmost drawn pixel.
+    var pad = 24;
+    var bbox = null;
+    try { bbox = d.svg.getBBox(); } catch (e) { /* no measurable content */ }
+    var vbX = 0, vbY = 0, vbW = 300, vbH = 60;
+    if (bbox && (bbox.width > 0 || bbox.height > 0)) {
+      vbX = bbox.x - pad;
+      vbY = bbox.y - pad;
+      vbW = Math.max(bbox.width + pad * 2, 300);
+      vbH = Math.max(bbox.height + pad * 2, 60);
+    }
+    d.svg.setAttribute('width', vbW);
+    d.svg.setAttribute('height', vbH);
+    d.svg.setAttribute('viewBox', vbX + ' ' + vbY + ' ' + vbW + ' ' + vbH);
+
+    // a stale horizontal scroll position from a previous, wider render
+    // would otherwise make the new (possibly narrower) content look
+    // clipped on the left
+    if (d.svg.parentNode) d.svg.parentNode.scrollLeft = 0;
   }
 
   function rerenderLast() {
