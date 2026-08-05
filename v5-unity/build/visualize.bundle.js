@@ -533,7 +533,7 @@ exports.SVG_ARROW_POLYGON = '0,3 12,3 12,0 18,5 12,10 12,7 0,7';
 var SVG_ARROW_HEIGHT = 10; // must match height of SVG_ARROW_POLYGON
 /* colors - see pytutor.css for more colors */
 exports.brightRed = '#e93f34';
-var connectorBaseColor = '#005583';
+var connectorBaseColor = '#4361ee';
 var connectorHighlightColor = exports.brightRed;
 var connectorInactiveColor = '#cccccc';
 var errorColor = exports.brightRed;
@@ -1089,7 +1089,7 @@ var ExecutionVisualizer = /** @class */ (function () {
                 msg = "Instruction limit reached";
             }
             else {
-                msg = "程序中止";
+                msg = "Program terminated";
             }
         }
         this.navControls.setVcrControls(msg, isFirstInstr, isLastInstr);
@@ -1473,18 +1473,18 @@ var DataVisualizer = /** @class */ (function () {
             + '" class="stackFrameHeader">' + this.getRealLabel('Global frame') + '</div><table class="stackFrameVarTable" id="'
             + this.owner.generateID('global_table') + '"></table></div>');
         this.jsPlumbInstance = jsPlumb.getInstance({
-            Endpoint: ["Dot", { radius: 3 }],
+            Endpoint: ["Dot", { radius: 4 }],
             EndpointStyles: [{ fillStyle: connectorBaseColor }, { fillstyle: null } /* make right endpoint invisible */],
             Anchors: ["RightMiddle", "LeftMiddle"],
-            PaintStyle: { lineWidth: 1, strokeStyle: connectorBaseColor },
+            PaintStyle: { lineWidth: 2.5, strokeStyle: connectorBaseColor },
             // bezier curve style:
             //Connector: [ "Bezier", { curviness:15 }], /* too much 'curviness' causes lines to run together */
             //Overlays: [[ "Arrow", { length: 14, width:10, foldback:0.55, location:0.35 }]],
             // state machine curve style:
             Connector: ["StateMachine"],
-            Overlays: [["Arrow", { length: 10, width: 7, foldback: 0.55, location: 1 }]],
+            Overlays: [["Arrow", { length: 13, width: 11, foldback: 0.8, location: 1 }]],
             EndpointHoverStyles: [{ fillStyle: connectorHighlightColor }, { fillstyle: null } /* make right endpoint invisible */],
-            HoverPaintStyle: { lineWidth: 1, strokeStyle: connectorHighlightColor },
+            HoverPaintStyle: { lineWidth: 2.5, strokeStyle: connectorHighlightColor },
         });
     }
     DataVisualizer.prototype.height = function () {
@@ -2031,6 +2031,48 @@ var DataVisualizer = /** @class */ (function () {
         var myViz = this; // to prevent confusion of 'this' inside of nested functions
         var curEntry = this.curTrace[curInstr];
         var curToplevelLayout = this.curTraceLayouts[curInstr];
+        // "just changed" flash: compare a value against what it was at the
+        // previous step, for either a global (frameId == null) or a specific
+        // stack frame's local variable (matched by frame_id, since frame
+        // objects are re-created fresh each step)
+        var prevTraceEntryForDiff = curInstr > 0 ? myViz.curTrace[curInstr - 1] : null;
+        function valueJustChanged(val, frameId, varname) {
+            if (!prevTraceEntryForDiff)
+                return false;
+            var prevVal;
+            if (frameId == null) {
+                prevVal = prevTraceEntryForDiff.globals[varname];
+            }
+            else {
+                var prevFrame = null;
+                for (var pi = 0; pi < prevTraceEntryForDiff.stack_to_render.length; pi++) {
+                    if (prevTraceEntryForDiff.stack_to_render[pi].frame_id === frameId) {
+                        prevFrame = prevTraceEntryForDiff.stack_to_render[pi];
+                        break;
+                    }
+                }
+                if (!prevFrame)
+                    return false;
+                prevVal = prevFrame.encoded_locals[varname];
+            }
+            if (prevVal === undefined)
+                return false; // newly-created variable, not a change
+            return JSON.stringify(val) !== JSON.stringify(prevVal);
+        }
+        // same idea, but for a value nested inside a heap object (list/tuple
+        // element by index, dict/instance/class attribute by key), matched
+        // by heap object ID, which stays stable across steps for the same object
+        function heapValueJustChanged(objID, key, val) {
+            if (!prevTraceEntryForDiff || !prevTraceEntryForDiff.heap)
+                return false;
+            var prevObj = prevTraceEntryForDiff.heap[objID];
+            if (!prevObj)
+                return false;
+            var prevVal = prevObj[key];
+            if (prevVal === undefined)
+                return false;
+            return JSON.stringify(val) !== JSON.stringify(prevVal);
+        }
         myViz.resetJsPlumbManager(); // very important!!!
         // for simplicity (but sacrificing some performance), delete all
         // connectors and redraw them from scratch. doing so avoids mysterious
@@ -2213,6 +2255,15 @@ var DataVisualizer = /** @class */ (function () {
                 // need to get rid of the old connector in preparation for rendering a new one:
                 existingConnectionEndpointIDs.remove(varDivID);
                 var val = curEntry.globals[varname];
+                // this <td> is a persistent element reused across steps (d3
+                // keys it by varname), so the class must be removed and
+                // re-added -- with a reflow in between -- or the CSS
+                // animation won't replay on a later change
+                $(this).removeClass('justChanged');
+                if (valueJustChanged(val, null, varname)) {
+                    void this.offsetWidth; // force reflow so the flash animation restarts
+                    $(this).addClass('justChanged');
+                }
                 if (myViz.isPrimitiveType(val)) {
                     myViz.renderPrimitiveObject(val, curInstr, $(this));
                 }
@@ -2406,6 +2457,14 @@ var DataVisualizer = /** @class */ (function () {
                 // need to get rid of the old connector in preparation for rendering a new one:
                 existingConnectionEndpointIDs.remove(varDivID);
                 var val = frame.encoded_locals[varname];
+                // see the comment in the globals block above: this <td> is
+                // reused across steps, so force a remove+reflow+re-add or
+                // the flash animation won't replay on a later change
+                $(this).removeClass('justChanged');
+                if (valueJustChanged(val, frame.frame_id, varname)) {
+                    void this.offsetWidth; // force reflow so the flash animation restarts
+                    $(this).addClass('justChanged');
+                }
                 if (myViz.isPrimitiveType(val)) {
                     myViz.renderPrimitiveObject(val, curInstr, $(this));
                 }
@@ -2631,7 +2690,7 @@ var DataVisualizer = /** @class */ (function () {
                 // if this connector starts in the selected stack frame ...
                 if (stackFrameDiv.attr('id') == frameID) {
                     // then HIGHLIGHT IT!
-                    c.setPaintStyle({ lineWidth: 1, strokeStyle: connectorBaseColor });
+                    c.setPaintStyle({ lineWidth: 2.5, strokeStyle: connectorBaseColor });
                     c.endpoints[0].setPaintStyle({ fillStyle: connectorBaseColor });
                     //c.endpoints[1].setVisible(false, true, true); // JUST set right endpoint to be invisible
                     $(c.canvas).css("z-index", 1000); // ... and move it to the VERY FRONT
@@ -2646,7 +2705,7 @@ var DataVisualizer = /** @class */ (function () {
                     // (only if c.source actually belongs to a stackFrameDiv (i.e.,
                     //  it originated from the stack). for instance, in C there are
                     //  heap pointers, but we doen't use heapConnectionEndpointIDs)
-                    c.setPaintStyle({ lineWidth: 1, strokeStyle: connectorInactiveColor });
+                    c.setPaintStyle({ lineWidth: 1.5, strokeStyle: connectorInactiveColor });
                     c.endpoints[0].setPaintStyle({ fillStyle: connectorInactiveColor });
                     //c.endpoints[1].setVisible(false, true, true); // JUST set right endpoint to be invisible
                     $(c.canvas).css("z-index", 0);
@@ -2860,6 +2919,32 @@ var DataVisualizer = /** @class */ (function () {
         var curHeap = myViz.curTrace[stepNum].heap;
         var obj = curHeap[objID];
         assert($.isArray(obj));
+        // "just changed" flash for values nested inside this heap object
+        // (list/tuple element by index, dict/instance/class attribute by
+        // key), matched against the same object ID at the previous step
+        var prevHeapForDiff = (stepNum > 0 && myViz.curTrace[stepNum - 1]) ? myViz.curTrace[stepNum - 1].heap : null;
+        function heapListValJustChanged(ind, val) {
+            if (!prevHeapForDiff)
+                return false;
+            var prevObj = prevHeapForDiff[objID];
+            if (!prevObj || prevObj[ind] === undefined)
+                return false;
+            return JSON.stringify(val) !== JSON.stringify(prevObj[ind]);
+        }
+        function heapKeyedValJustChanged(startIdx, keyVal, val) {
+            if (!prevHeapForDiff)
+                return false;
+            var prevObj = prevHeapForDiff[objID];
+            if (!prevObj)
+                return false;
+            for (var pk = startIdx; pk < prevObj.length; pk++) {
+                var pair = prevObj[pk];
+                if (JSON.stringify(pair[0]) === JSON.stringify(keyVal)) {
+                    return JSON.stringify(val) !== JSON.stringify(pair[1]);
+                }
+            }
+            return false; // key didn't exist before => newly added, not a "change"
+        }
         // prepend the type label with a memory address label
         var typeLabelPrefix = '';
         if (myViz.params.textualMemoryLabels) {
@@ -2894,7 +2979,11 @@ var DataVisualizer = /** @class */ (function () {
                         headerTr.append('<td class="' + label + 'Header"></td>');
                         headerTr.find('td:last').append(ind - 1);
                         contentTr.append('<td class="' + label + 'Elt"></td>');
-                        myViz.renderNestedObject(val, stepNum, contentTr.find('td:last'));
+                        var listEltTd = contentTr.find('td:last');
+                        if (heapListValJustChanged(ind, val)) {
+                            listEltTd.addClass('justChanged');
+                        }
+                        myViz.renderNestedObject(val, stepNum, listEltTd);
                     });
                 }
                 else if (obj[0] == 'SET') {
@@ -2932,6 +3021,9 @@ var DataVisualizer = /** @class */ (function () {
                         var valTd = newRow.find('td:last');
                         var key = kvPair[0];
                         var val = kvPair[1];
+                        if (heapKeyedValJustChanged(1, key, val)) {
+                            valTd.addClass('justChanged');
+                        }
                         myViz.renderNestedObject(key, stepNum, keyTd);
                         myViz.renderNestedObject(val, stepNum, valTd);
                     });
@@ -2986,6 +3078,9 @@ var DataVisualizer = /** @class */ (function () {
                         myViz.renderNestedObject(kvPair[0], stepNum, keyTd);
                     }
                     // values can be arbitrary objects, so recurse:
+                    if (heapKeyedValJustChanged(headerLength, kvPair[0], kvPair[1])) {
+                        valTd.addClass('justChanged');
+                    }
                     myViz.renderNestedObject(kvPair[1], stepNum, valTd);
                 });
             }
@@ -3237,7 +3332,7 @@ var ProgramOutputBox = /** @class */ (function () {
         this.owner = owner;
         this.domRoot = domRoot;
         var outputsHTML = '<div id="progOutputs">\
-         <div id="printOutputDocs">打印输出（拖动右下角调整大小）</div>\n\
+         <div id="printOutputDocs">Print output (drag lower right corner to resize)</div>\n\
          <textarea id="pyStdout" cols="40" rows="5" wrap="off" readonly></textarea>\
        </div>';
         this.domRoot.append(outputsHTML);
@@ -3305,18 +3400,18 @@ var CodeDisplay = /** @class */ (function () {
         var codeDisplayHTML = '<div id="codeDisplayDiv">\
          <div id="langDisplayDiv"></div>\
          <div id="pyCodeOutputDiv"/>\
-         <div id="editCodeLinkDiv"><a id="editBtn">编辑此代码</a>\
+         <div id="editCodeLinkDiv"><a id="editBtn">Edit this code</a>\
          </div>\
          <div id="legendDiv"/>\
-         <div id="codeFooterDocs">单击一行代码以设置断点；使用“后退”和“前进”按钮跳转到那里。</div>\
+         <div id="codeFooterDocs">Click a line of code to set a breakpoint; use the "Back" and "Forward" buttons to jump there.</div>\
        </div>';
         this.domRoot.append(codeDisplayHTML);
         if (this.owner.params.embeddedMode) {
             this.domRoot.find('#editCodeLinkDiv').css('font-size', '10pt');
         }
         this.domRoot.find('#legendDiv')
-            .append('<svg id="prevLegendArrowSVG"/> 刚刚执行的行')
-            .append('<p style="margin-top: 4px"><svg id="curLegendArrowSVG"/>将要执行的下一行</p>');
+            .append('<svg id="prevLegendArrowSVG"/> line that has just executed')
+            .append('<p style="margin-top: 4px"><svg id="curLegendArrowSVG"/>line that will execute next</p>');
         this.domRootD3.select('svg#prevLegendArrowSVG')
             .append('polygon')
             .attr('points', exports.SVG_ARROW_POLYGON)
@@ -3602,6 +3697,13 @@ var CodeDisplay = /** @class */ (function () {
             else {
                 return '';
             }
+        })
+            .classed('curLineRowHighlight', function (d) {
+            return !!myViz.curLineNumber && d.lineNumber == myViz.curLineNumber;
+        })
+            .classed('prevLineRowHighlight', function (d) {
+            return !!myViz.prevLineNumber && d.lineNumber == myViz.prevLineNumber
+                && d.lineNumber != myViz.curLineNumber;
         });
         // returns True iff lineNo is visible in pyCodeOutputDiv
         var isOutputLineVisible = function (lineNo) {
@@ -3649,11 +3751,11 @@ var NavigationController = /** @class */ (function () {
                      <div id="executionSlider"/>\
                      <div id="executionSliderFooter"/>\
                      <div id="vcrControls">\
-                       <button id="jmpFirstInstr", type="button">&lt;&lt; 第一</button>\
-                       <button id="jmpStepBack", type="button">&lt; 后退</button>\
+                       <button id="jmpFirstInstr", type="button">&lt;&lt; First</button>\
+                       <button id="jmpStepBack", type="button">&lt; Back</button>\
                        <span id="curInstr">Step ? of ?</span>\
-                       <button id="jmpStepFwd", type="button">前进 &gt;</button>\
-                       <button id="jmpLastInstr", type="button">最后 &gt;&gt;</button>\
+                       <button id="jmpStepFwd", type="button">Forward &gt;</button>\
+                       <button id="jmpLastInstr", type="button">Last &gt;&gt;</button>\
                      </div>\
                      <div id="rawUserInputDiv">\
                        <span id="userInputPromptStr"/>\
@@ -22269,7 +22371,7 @@ var AbstractBaseFrontend = /** @class */ (function () {
     };
     AbstractBaseFrontend.prototype.startExecutingCode = function (startingInstruction) {
         if (startingInstruction === void 0) { startingInstruction = 0; }
-        $('#executeBtn').html("请稍候……正在执行（最多需要 10 秒钟）。");
+        $('#executeBtn').html("Please wait... running (may take up to 10 seconds).");
         $('#executeBtn').attr('disabled', true);
         this.isExecutingCode = true;
     };
@@ -23656,7 +23758,7 @@ var OptFrontendSharedSessions = /** @class */ (function (_super) {
         pytutor_1.assert(exports.TogetherJS);
         if (togetherjsInUrl) { // kinda gross global
             $("#ssDiv,#surveyHeader").hide(); // hide ASAP!
-            $("#togetherjsStatus").html("请稍候……正在加载实时帮助聊天会话。");
+            $("#togetherjsStatus").html("Please wait... loading live help chat session.");
         }
         // clear your name from the cache every time to prevent privacy leaks
         if (opt_frontend_common_1.supports_html5_storage()) {
@@ -24137,7 +24239,7 @@ var OptFrontendSharedSessions = /** @class */ (function (_super) {
     };
     OptFrontendSharedSessions.prototype.startSharedSession = function (wantsPublicHelp) {
         $("#ssDiv,#surveyHeader").hide(); // hide ASAP!
-        $("#togetherjsStatus").html("请稍候……正在加载实时帮助聊天会话。");
+        $("#togetherjsStatus").html("Please wait... loading live help chat session.");
         exports.TogetherJS();
         // TODO: unify everything into 1 boolean
         this.wantsPublicHelp = wantsPublicHelp;

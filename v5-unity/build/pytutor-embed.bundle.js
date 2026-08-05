@@ -3205,7 +3205,7 @@ var ProgramOutputBox = /** @class */ (function () {
         this.owner = owner;
         this.domRoot = domRoot;
         var outputsHTML = '<div id="progOutputs">\
-         <div id="printOutputDocs">打印输出（拖动右下角调整大小）</div>\n\
+         <div id="printOutputDocs">Print output (drag lower right corner to resize)</div>\n\
          <textarea id="pyStdout" cols="40" rows="5" wrap="off" readonly></textarea>\
        </div>';
         this.domRoot.append(outputsHTML);

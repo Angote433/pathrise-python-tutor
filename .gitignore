@@ -6,6 +6,10 @@
 v4-cokapi/feedback/cokapi-feedback.db
 coding-the-matrix/
 node_modules/
+# vendor these frozen Node-6-era deps so the JS backend Docker image
+# builds from a fresh clone without needing npm to talk to the
+# ancient bundled Node's package client
+!v4-cokapi/backends/javascript/node_modules/
 google-analytics.txt
 webfaction-deploy.sh
 v3/opt_togetherjs/*.json
@@ -23,3 +27,4 @@ v4-cokapi/backends/java/jdk-8u20-linux-x64.tar.gz
 
 v4-cokapi/cokapi.log
 v5-unity/.venv/
+v5-unity/bottle.log

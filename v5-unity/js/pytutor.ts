@@ -46,7 +46,7 @@ var SVG_ARROW_HEIGHT = 10; // must match height of SVG_ARROW_POLYGON
 
 /* colors - see pytutor.css for more colors */
 export var brightRed = '#e93f34';
-var connectorBaseColor = '#005583';
+var connectorBaseColor = '#4361ee';
 var connectorHighlightColor = brightRed;
 var connectorInactiveColor = '#cccccc';
 var errorColor = brightRed;
@@ -1190,10 +1190,10 @@ class DataVisualizer {
 
 
     this.jsPlumbInstance = jsPlumb.getInstance({
-      Endpoint: ["Dot", {radius:3}],
+      Endpoint: ["Dot", {radius:4}],
       EndpointStyles: [{fillStyle: connectorBaseColor}, {fillstyle: null} /* make right endpoint invisible */],
       Anchors: ["RightMiddle", "LeftMiddle"],
-      PaintStyle: {lineWidth:1, strokeStyle: connectorBaseColor},
+      PaintStyle: {lineWidth:2.5, strokeStyle: connectorBaseColor},
 
       // bezier curve style:
       //Connector: [ "Bezier", { curviness:15 }], /* too much 'curviness' causes lines to run together */
@@ -1201,9 +1201,9 @@ class DataVisualizer {
 
       // state machine curve style:
       Connector: [ "StateMachine" ],
-      Overlays: [[ "Arrow", { length: 10, width:7, foldback:0.55, location:1 }]],
+      Overlays: [[ "Arrow", { length: 13, width:11, foldback:0.8, location:1 }]],
       EndpointHoverStyles: [{fillStyle: connectorHighlightColor}, {fillstyle: null} /* make right endpoint invisible */],
-      HoverPaintStyle: {lineWidth: 1, strokeStyle: connectorHighlightColor},
+      HoverPaintStyle: {lineWidth: 2.5, strokeStyle: connectorHighlightColor},
     });
   }
 
@@ -3215,7 +3215,7 @@ class ProgramOutputBox {
 
     var outputsHTML =
       '<div id="progOutputs">\
-         <div id="printOutputDocs">打印输出（拖动右下角调整大小）</div>\n\
+         <div id="printOutputDocs">Print output (drag lower right corner to resize)</div>\n\
          <textarea id="pyStdout" cols="40" rows="5" wrap="off" readonly></textarea>\
        </div>';
 
@@ -3611,6 +3611,13 @@ class CodeDisplay {
         else {
           return '';
         }
+      })
+      .classed('curLineRowHighlight', function(d) {
+        return !!myViz.curLineNumber && d.lineNumber == myViz.curLineNumber;
+      })
+      .classed('prevLineRowHighlight', function(d) {
+        return !!myViz.prevLineNumber && d.lineNumber == myViz.prevLineNumber
+          && d.lineNumber != myViz.curLineNumber;
       });
 
     // returns True iff lineNo is visible in pyCodeOutputDiv

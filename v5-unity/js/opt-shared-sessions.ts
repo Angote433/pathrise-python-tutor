@@ -1080,7 +1080,7 @@ Get live help!
 
     if (togetherjsInUrl) { // kinda gross global
       $("#ssDiv,#surveyHeader").hide(); // hide ASAP!
-      $("#togetherjsStatus").html("请稍候……正在加载实时帮助聊天会话。");
+      $("#togetherjsStatus").html("Please wait... loading live help chat session.");
     }
 
     // clear your name from the cache every time to prevent privacy leaks
@@ -1626,7 +1626,7 @@ Get live help!
 
   startSharedSession(wantsPublicHelp) {
     $("#ssDiv,#surveyHeader").hide(); // hide ASAP!
-    $("#togetherjsStatus").html("请稍候……正在加载实时帮助聊天会话。");
+    $("#togetherjsStatus").html("Please wait... loading live help chat session.");
     TogetherJS();
     // TODO: unify everything into 1 boolean
     this.wantsPublicHelp = wantsPublicHelp;

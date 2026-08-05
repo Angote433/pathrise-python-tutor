@@ -304,7 +304,7 @@ export abstract class AbstractBaseFrontend {
   }
 
   startExecutingCode(startingInstruction=0) {
-    $('#executeBtn').html("请稍候……正在执行（最多需要 10 秒钟）。");
+    $('#executeBtn').html("Please wait... running (may take up to 10 seconds).");
     $('#executeBtn').attr('disabled', true);
     this.isExecutingCode = true;
   }

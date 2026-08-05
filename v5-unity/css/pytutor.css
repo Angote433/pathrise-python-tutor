@@ -863,3 +863,378 @@ div.ExecutionVisualizer td.queueFElt table.dictTbl {
 }
 
 /* END Java frontend by David Pritchard and Will Gwozdz */
+
+
+/* ==========================================================================
+   MODERNIZED VISUAL THEME (2026 refresh)
+
+   Everything below this point is a self-contained, appended block that
+   overrides the defaults above via normal CSS cascade (same selector
+   specificity, later source order wins). To roll back to the classic
+   look, just delete this block -- nothing above it was touched.
+
+   Covers: a cleaner neutral palette, textbook-style array/list rendering,
+   card-style heap objects and stack frames, an accent-colored "current
+   frame", smooth transitions with a flash-on-change highlight for
+   variables and heap cells (paired with the JS diffing added to
+   renderDataStructures / renderCompoundObject in build/visualize.bundle.js),
+   a highlight bar for the current/previous code line, and larger, modern
+   VCR controls + step slider.
+   ========================================================================== */
+
+div.ExecutionVisualizer {
+  --pt-accent: #4361ee;
+  --pt-accent-dark: #2f4bd0;
+  --pt-accent-soft: #e8ecfd;
+  --pt-flash-bg: #fff4b8;
+  --pt-flash-bg-strong: #ffe27a;
+  --pt-bg-card: #ffffff;
+  --pt-bg-page: #f7f8fb;
+  --pt-border: #dde1e8;
+  --pt-border-soft: #eceff3;
+  --pt-text: #20242c;
+  --pt-text-muted: #6b7280;
+  --pt-radius: 8px;
+  --pt-radius-sm: 6px;
+  --pt-mono: "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+  --pt-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+  color: var(--pt-text);
+}
+
+/* ---- Base typography: 16px+ in the code pane and data panes ---- */
+
+div.ExecutionVisualizer table#pyCodeOutput {
+  font-family: var(--pt-mono);
+  font-size: 16px;
+  line-height: 1.5em;
+  border: 1px solid var(--pt-border);
+  border-radius: var(--pt-radius);
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+
+div.ExecutionVisualizer td#stack_td,
+div.ExecutionVisualizer td#heap_td {
+  font-size: 16px;
+}
+
+div.ExecutionVisualizer .stackFrameValue,
+div.ExecutionVisualizer .stringObj,
+div.ExecutionVisualizer .customObj,
+div.ExecutionVisualizer table.listTbl td.listElt,
+div.ExecutionVisualizer table.tupleTbl td.tupleElt,
+div.ExecutionVisualizer table.setTbl td.setElt,
+div.ExecutionVisualizer table.dictTbl td.dictVal,
+div.ExecutionVisualizer table.instTbl td.instVal,
+div.ExecutionVisualizer table.classTbl td.classVal,
+div.ExecutionVisualizer table.cArrayTbl td.cArrayElt,
+div.ExecutionVisualizer table.stackTbl td.stackElt,
+div.ExecutionVisualizer table.queueTbl td.queueElt {
+  font-family: var(--pt-mono);
+  font-size: 16px;
+}
+
+/* small muted labels stay small -- index numbers, type/id labels, headers */
+div.ExecutionVisualizer .typeLabel,
+div.ExecutionVisualizer .objectIdLabel,
+div.ExecutionVisualizer table.listTbl td.listHeader,
+div.ExecutionVisualizer table.tupleTbl td.tupleHeader,
+div.ExecutionVisualizer table.cArrayTbl td.cArrayHeader,
+div.ExecutionVisualizer table.cArrayTbl td.cMultidimArrayHeader,
+div.ExecutionVisualizer .cdataHeader {
+  font-family: var(--pt-sans);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--pt-text-muted);
+}
+
+
+/* ---- B1: Arrays / lists as textbook-style cell rows ---- */
+
+div.ExecutionVisualizer table.listTbl,
+div.ExecutionVisualizer table.tupleTbl,
+div.ExecutionVisualizer table.cArrayTbl {
+  background: transparent;
+  border-spacing: 0;
+  border-collapse: separate;
+}
+
+div.ExecutionVisualizer table.listTbl td.listElt,
+div.ExecutionVisualizer table.tupleTbl td.tupleElt,
+div.ExecutionVisualizer table.cArrayTbl td.cArrayElt {
+  min-width: 2.6em;
+  height: 1.8em;
+  text-align: center;
+  vertical-align: middle;
+  background: var(--pt-bg-card);
+  border: 1px solid var(--pt-border);
+  border-right-width: 0;
+  padding: 0.5em 0.7em;
+}
+
+div.ExecutionVisualizer table.listTbl td.listElt:last-child,
+div.ExecutionVisualizer table.tupleTbl td.tupleElt:last-child,
+div.ExecutionVisualizer table.cArrayTbl td.cArrayElt:last-child {
+  border-right-width: 1px;
+}
+
+div.ExecutionVisualizer table.listTbl td.listHeader,
+div.ExecutionVisualizer table.tupleTbl td.tupleHeader,
+div.ExecutionVisualizer table.cArrayTbl td.cArrayHeader {
+  text-align: center;
+  border: none;
+  padding-bottom: 4px;
+}
+
+div.ExecutionVisualizer table.setTbl {
+  border: 1px solid var(--pt-border);
+  border-radius: var(--pt-radius-sm);
+  border-spacing: 0;
+  overflow: hidden;
+}
+
+div.ExecutionVisualizer table.setTbl td.setElt {
+  background: var(--pt-bg-card);
+  border: 1px solid var(--pt-border-soft);
+  padding: 0.6em;
+}
+
+
+/* ---- B1: Heap objects (dicts, instances, classes, linked nodes) as cards ---- */
+
+div.ExecutionVisualizer div.heapObject {
+  background: var(--pt-bg-card);
+  border: 1px solid var(--pt-border);
+  border-radius: var(--pt-radius);
+  padding: 10px 12px;
+  box-shadow: 0 1px 2px rgba(20, 24, 34, 0.05);
+}
+
+div.ExecutionVisualizer div.heapObject .typeLabel {
+  margin-bottom: 6px;
+}
+
+div.ExecutionVisualizer table.dictTbl,
+div.ExecutionVisualizer table.instTbl,
+div.ExecutionVisualizer table.classTbl,
+div.ExecutionVisualizer table.customObjTbl,
+div.ExecutionVisualizer table.stackTbl,
+div.ExecutionVisualizer table.queueTbl {
+  border: 1px solid var(--pt-border) !important;
+  border-radius: var(--pt-radius-sm);
+  border-spacing: 0;
+  border-collapse: separate;
+  overflow: hidden;
+  background: transparent;
+}
+
+div.ExecutionVisualizer table.dictTbl td.dictKey,
+div.ExecutionVisualizer table.instTbl td.instKey,
+div.ExecutionVisualizer table.classTbl td.classKey {
+  background: var(--pt-bg-page);
+  color: var(--pt-text-muted);
+  border-bottom: 1px solid var(--pt-border-soft) !important;
+  font-family: var(--pt-mono);
+  font-size: 15px;
+}
+
+div.ExecutionVisualizer table.dictTbl td.dictVal,
+div.ExecutionVisualizer table.instTbl td.instVal,
+div.ExecutionVisualizer table.classTbl td.classVal {
+  background: var(--pt-bg-card);
+  border-bottom: 1px solid var(--pt-border-soft) !important;
+  border-left: 1px solid var(--pt-border-soft) !important;
+}
+
+div.ExecutionVisualizer table.customObjTbl {
+  border: 1px solid var(--pt-border);
+  background: var(--pt-bg-card);
+}
+
+div.ExecutionVisualizer table.customObjTbl td.customObjElt {
+  font-family: var(--pt-mono);
+  font-size: 15px;
+}
+
+
+/* ---- B1: Stack frames as cards, current frame gets an accent border ---- */
+
+div.ExecutionVisualizer div.stackFrame,
+div.ExecutionVisualizer div.zombieStackFrame {
+  background: var(--pt-bg-card);
+  border: 1px solid var(--pt-border);
+  border-left: 3px solid var(--pt-border);
+  border-radius: var(--pt-radius);
+  padding: 10px 12px 12px 12px;
+}
+
+div.ExecutionVisualizer div.stackFrameHeader {
+  font-family: var(--pt-mono);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--pt-text);
+  margin-bottom: 8px;
+}
+
+div.ExecutionVisualizer div.highlightedStackFrame {
+  background: var(--pt-accent-soft);
+  border-left: 3px solid var(--pt-accent);
+  box-shadow: 0 1px 3px rgba(67, 97, 238, 0.15);
+}
+
+div.ExecutionVisualizer td.stackFrameValue {
+  border: none;
+  border-bottom: 1px solid var(--pt-border-soft);
+  border-radius: var(--pt-radius-sm);
+  padding: 6px 8px;
+}
+
+div.ExecutionVisualizer td.stackFrameVar {
+  color: var(--pt-text-muted);
+  font-family: var(--pt-mono);
+  font-size: 14px;
+}
+
+
+/* ---- B2: smooth value transitions + "just changed" flash ---- */
+
+div.ExecutionVisualizer td.stackFrameValue,
+div.ExecutionVisualizer table.listTbl td.listElt,
+div.ExecutionVisualizer table.tupleTbl td.tupleElt,
+div.ExecutionVisualizer table.setTbl td.setElt,
+div.ExecutionVisualizer table.dictTbl td.dictVal,
+div.ExecutionVisualizer table.instTbl td.instVal,
+div.ExecutionVisualizer table.classTbl td.classVal,
+div.ExecutionVisualizer table.cArrayTbl td.cArrayElt,
+div.ExecutionVisualizer table.cArrayTbl td.cMultidimArrayElt,
+div.ExecutionVisualizer table.stackTbl td.stackElt,
+div.ExecutionVisualizer table.queueTbl td.queueElt {
+  transition: background-color 200ms ease, color 200ms ease, border-color 200ms ease;
+}
+
+/* set by the renderer (renderDataStructures / renderCompoundObject) when a
+   value differs from what it was at the previous step -- this is THE
+   highest-value change here, since every assignment becomes visible */
+div.ExecutionVisualizer .justChanged {
+  animation: pt-flash-fade 800ms ease-out;
+}
+
+@keyframes pt-flash-fade {
+  0%   { background-color: var(--pt-flash-bg-strong); }
+  100% { background-color: transparent; }
+}
+
+/* heap object cards flash too, via a box-shadow ring so the flash is
+   visible even though the card's own background is already white */
+div.ExecutionVisualizer div.heapObject:has(.justChanged) {
+  animation: pt-flash-ring 800ms ease-out;
+}
+
+@keyframes pt-flash-ring {
+  0%   { box-shadow: 0 0 0 3px var(--pt-flash-bg-strong); }
+  100% { box-shadow: 0 1px 2px rgba(20, 24, 34, 0.05); }
+}
+
+
+/* ---- B2: current-line indicator in the code pane ---- */
+
+div.ExecutionVisualizer table#pyCodeOutput td.cod {
+  transition: background-color 150ms ease;
+  border-radius: 3px;
+}
+
+/* the line about to execute -- strong bar */
+div.ExecutionVisualizer table#pyCodeOutput td.cod.curLineRowHighlight {
+  background-color: var(--pt-flash-bg);
+  box-shadow: inset 3px 0 0 0 var(--pt-accent);
+}
+
+/* the line that just executed -- softer bar */
+div.ExecutionVisualizer table#pyCodeOutput td.cod.prevLineRowHighlight {
+  background-color: var(--pt-border-soft);
+  box-shadow: inset 3px 0 0 0 var(--pt-text-muted);
+}
+
+div.ExecutionVisualizer .arrow {
+  transition: transform 200ms ease;
+}
+
+
+/* ---- B3: VCR controls + step slider, styled larger and modern ---- */
+
+div.ExecutionVisualizer #vcrControls button,
+div.ExecutionVisualizer div#editCodeLinkDiv {
+  background: var(--pt-accent);
+  color: #ffffff;
+  border: 0;
+  border-radius: var(--pt-radius);
+  padding: 0.55rem 1.1rem;
+  font-family: var(--pt-sans);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  box-shadow: 0 1px 2px rgba(20, 24, 34, 0.12);
+  transition: background-color 150ms ease, transform 100ms ease, box-shadow 150ms ease;
+}
+
+div.ExecutionVisualizer #vcrControls button:hover,
+div.ExecutionVisualizer div#editCodeLinkDiv:hover {
+  background: var(--pt-accent-dark);
+  box-shadow: 0 2px 6px rgba(20, 24, 34, 0.18);
+}
+
+div.ExecutionVisualizer #vcrControls button:active,
+div.ExecutionVisualizer div#editCodeLinkDiv:active {
+  transform: translateY(1px);
+}
+
+div.ExecutionVisualizer #vcrControls button:disabled {
+  background: var(--pt-border);
+  color: var(--pt-text-muted);
+  box-shadow: none;
+  cursor: default;
+}
+
+div.ExecutionVisualizer #vcrControls #curInstr {
+  font-family: var(--pt-sans);
+  font-size: 14px;
+  color: var(--pt-text-muted);
+  margin-left: 10px;
+  margin-right: 10px;
+}
+
+div.ExecutionVisualizer .ui-slider {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--pt-border);
+  border: none;
+}
+
+div.ExecutionVisualizer .ui-slider .ui-slider-handle {
+  width: 20px;
+  height: 20px;
+  top: -7px;
+  margin-left: -10px;
+  border-radius: 50%;
+  background: var(--pt-bg-card);
+  border: 2px solid var(--pt-accent);
+  box-shadow: 0 1px 3px rgba(20, 24, 34, 0.2);
+  cursor: pointer;
+  transition: box-shadow 150ms ease, transform 100ms ease;
+}
+
+div.ExecutionVisualizer .ui-slider .ui-slider-handle:hover,
+div.ExecutionVisualizer .ui-slider .ui-slider-handle:focus {
+  box-shadow: 0 0 0 5px var(--pt-accent-soft);
+  transform: scale(1.05);
+}
+
+div.ExecutionVisualizer .ui-slider .ui-slider-range {
+  background: var(--pt-accent);
+  border-radius: 4px;
+}
+
+/* END modernized visual theme */

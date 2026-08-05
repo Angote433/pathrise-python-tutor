@@ -3237,7 +3237,7 @@ var ProgramOutputBox = /** @class */ (function () {
         this.owner = owner;
         this.domRoot = domRoot;
         var outputsHTML = '<div id="progOutputs">\
-         <div id="printOutputDocs">打印输出（拖动右下角调整大小）</div>\n\
+         <div id="printOutputDocs">Print output (drag lower right corner to resize)</div>\n\
          <textarea id="pyStdout" cols="40" rows="5" wrap="off" readonly></textarea>\
        </div>';
         this.domRoot.append(outputsHTML);
@@ -22269,7 +22269,7 @@ var AbstractBaseFrontend = /** @class */ (function () {
     };
     AbstractBaseFrontend.prototype.startExecutingCode = function (startingInstruction) {
         if (startingInstruction === void 0) { startingInstruction = 0; }
-        $('#executeBtn').html("请稍候……正在执行（最多需要 10 秒钟）。");
+        $('#executeBtn').html("Please wait... running (may take up to 10 seconds).");
         $('#executeBtn').attr('disabled', true);
         this.isExecutingCode = true;
     };
@@ -23656,7 +23656,7 @@ var OptFrontendSharedSessions = /** @class */ (function (_super) {
         pytutor_1.assert(exports.TogetherJS);
         if (togetherjsInUrl) { // kinda gross global
             $("#ssDiv,#surveyHeader").hide(); // hide ASAP!
-            $("#togetherjsStatus").html("请稍候……正在加载实时帮助聊天会话。");
+            $("#togetherjsStatus").html("Please wait... loading live help chat session.");
         }
         // clear your name from the cache every time to prevent privacy leaks
         if (opt_frontend_common_1.supports_html5_storage()) {
@@ -24137,7 +24137,7 @@ var OptFrontendSharedSessions = /** @class */ (function (_super) {
     };
     OptFrontendSharedSessions.prototype.startSharedSession = function (wantsPublicHelp) {
         $("#ssDiv,#surveyHeader").hide(); // hide ASAP!
-        $("#togetherjsStatus").html("请稍候……正在加载实时帮助聊天会话。");
+        $("#togetherjsStatus").html("Please wait... loading live help chat session.");
         exports.TogetherJS();
         // TODO: unify everything into 1 boolean
         this.wantsPublicHelp = wantsPublicHelp;

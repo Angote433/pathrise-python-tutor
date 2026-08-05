@@ -41,6 +41,14 @@ var express = require('express');
 var util = require('util');
 
 
+// absolute path to the docker executable; override with the DOCKER_PATH
+// env var if it's installed somewhere else
+var DOCKER_EXE = process.env.DOCKER_PATH ||
+  (process.platform === 'win32'
+    ? 'C:/Program Files/Docker/Docker/resources/bin/docker.exe'
+    : '/usr/bin/docker');
+
+
 // to use low-numbered ports, Node must be allowed to bind to ports lower than 1024.
 // e.g., run: sudo setcap 'cap_net_bind_service=+ep' <node executable>
 // defaults:
@@ -151,7 +159,7 @@ function exec_js_handler(useJSONP /* use bind first */, isTypescript /* use bind
   var args = [];
 
   // must match the docker setup in backends/javascript/Dockerfile
-  exeFile = 'C:/Program Files/Docker/Docker/resources/bin/docker.exe'; // absolute path to docker executable
+  exeFile = DOCKER_EXE;
   args.push('run', '-m', MEM_LIMIT, '--rm', '--user=netuser', '--net=none', '--cap-drop', 'all', 'pgbovine/cokapi-js:v1',
             '/tmp/javascript/node-v6.0.0-linux-x64/bin/node', // custom Node.js version
             '--expose-debug-as=Debug',
@@ -188,7 +196,7 @@ function exec_pyanaconda_handler(useJSONP /* use bind first */, req, res) {
   var args = [];
 
   // must match the docker setup in backends/javascript/Dockerfile
-  exeFile = 'C:/Program Files/Docker/Docker/resources/bin/docker.exe'; // absolute path to docker executable
+  exeFile = DOCKER_EXE;
   args.push('run', '-m', MEM_LIMIT, '--rm', '--user=netuser', '--net=none', '--cap-drop', 'all', 'pgbovine/cokapi-python-anaconda:v1',
             'python',
             '/tmp/python/generate_json_trace.py',
@@ -273,7 +281,7 @@ function exec_java_handler(useJSONP /* use bind first */, req, res) {
   var inputObjJSON = JSON.stringify(inputObj);
 
   // must match the docker setup in backends/java/Dockerfile
-  exeFile = 'C:/Program Files/Docker/Docker/resources/bin/docker.exe'; // absolute path to docker executable
+  exeFile = DOCKER_EXE;
   args.push('run', '-m', MEM_LIMIT, '--rm', '--user=netuser', '--net=none', '--cap-drop', 'all', 'pgbovine/cokapi-java:v1',
             '/tmp/run-java-backend.sh',
             inputObjJSON);
@@ -300,7 +308,7 @@ function exec_ruby_handler(useJSONP /* use bind first */, req, res) {
   var args = [];
 
   // must match the docker setup in backends/ruby/Dockerfile
-  exeFile = 'C:/Program Files/Docker/Docker/resources/bin/docker.exe'; // absolute path to docker executable
+  exeFile = DOCKER_EXE;
   args.push('run', '-m', MEM_LIMIT, '--rm', '--user=netuser', '--net=none', '--cap-drop', 'all', 'pgbovine/cokapi-ruby:v1',
             '/tmp/ruby/ruby',
             '/tmp/ruby/pg_logger.rb',
@@ -331,7 +339,7 @@ function exec_cpp_handler(useCPP /* use bind first */, useJSONP /* use bind firs
   var args = [];
 
   // must match the docker setup in backends/c_cpp/Dockerfile
-  exeFile = 'C:/Program Files/Docker/Docker/resources/bin/docker.exe'; // absolute path to docker executable
+  exeFile = DOCKER_EXE;
   args.push('run', '-m', MEM_LIMIT, '--rm', '--user=netuser', '--net=none', '--cap-drop', 'all', 'pgbovine/opt-cpp-backend:v1',
             'python',
             '/tmp/opt-cpp-backend/run_cpp_backend.py',
